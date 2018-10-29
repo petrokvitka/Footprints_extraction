@@ -239,8 +239,7 @@ def make_bed_dictionary(bed_file):
 	return bed_dictionary
 
 def find_window(bed_file):
-	print("entered find window")
-
+	
 	#chromosom = 1 #start with the first chromosom
 	window_length = 0
 
@@ -255,15 +254,45 @@ def find_window(bed_file):
 
 	print(window_length)
 
+def find_peaks_from_bw(bed_dictionary, bw_file):
+
+	bw_open = pyBigWig.open(bw_file)
+
+	for header in bed_dictionary:
+		header_splitted = re.split(r':', header)
+		chromosom = header_splitted[0]
+		positions = re.split(r'-', header_splitted[-1])
+
+		scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, int(positions[0]), int(positions[1]))))) #save the scores to an array
+
+		bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
+
+		footprint = {}
+		
+		for i in range(len(scores_in_peak)):
+			position = i + 1 #calculate the relative position for a score
+			score = scores_in_peak[i] #extract one score from the list
+			if score >= bw_peak_background:
+				#save the position where this score is and start to write a footprint
+				footprint[position] = score
+
+		print(footprint)
+
 def main():
 
 	start = time.time()
 
-	#peaks_bed_file = "./small_peaks.bed"
-	peaks_bed_file = "./control_peaks.bed"
-	find_window(peaks_bed_file)
+	peaks_bed_file = "./small_peaks.bed"
+	#peaks_bed_file = "./control_peaks.bed"
+	#find_window(peaks_bed_file)
 
+	#bed_dictionary = make_bed_dictionary(peaks_bed_file)
+	bed_dictionary = {}
+	bed_dictionary["chr1:3062743-3063132"] = ["control1"]
 
+	bw_file = "./control_footprints.bw"
+
+	find_peaks_from_bw(bed_dictionary, bw_file)
 
 
 	#args = parse_args()
@@ -291,7 +320,7 @@ def main():
 
 	#blablablaaaa
 
-	logger.info("call_peaks needed %s seconds to generate the output" % (time.time() - start))
+	#logger.info("call_peaks needed %s seconds to generate the output" % (time.time() - start))
 	
 	for handler in logger.handlers:
 		handler.close()
