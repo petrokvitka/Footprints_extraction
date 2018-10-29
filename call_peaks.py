@@ -256,6 +256,8 @@ def find_window(bed_file):
 
 def find_peaks_from_bw(bed_dictionary, bw_file):
 
+	footprint_count = 1
+
 	bw_open = pyBigWig.open(bw_file)
 
 	for header in bed_dictionary:
@@ -267,16 +269,32 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 
 		bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
 
-		footprint = {}
-		
+		all_footprints = {}
+		check_position = 0
+
 		for i in range(len(scores_in_peak)):
 			position = i + 1 #calculate the relative position for a score
 			score = scores_in_peak[i] #extract one score from the list
 			if score >= bw_peak_background:
-				#save the position where this score is and start to write a footprint
-				footprint[position] = score
+				if position != (check_position + 1):
+					print()
+					print("new footprint ", footprint_count)
 
-		print(footprint)
+					start_pos = position #save current position as start for this footprint <------------------------------ bebe
+					footprint_name = "footprint_" + str(footprint_count)
+					all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
+					all_footprints[footprint_name] = {'chromosom': chromosom, 'start': start_pos, 'end': "todo"} #<-------------------------- bebe
+
+					footprint_count += 1
+					check_position = position
+				#save the position where this score is and start to write a footprint
+				#footprint[position] = score
+				#print(position, footprint[position])
+
+				check_position = position
+
+		#print(footprint)
+		print(all_footprints)
 
 def main():
 
