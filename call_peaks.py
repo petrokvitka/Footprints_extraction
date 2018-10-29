@@ -30,7 +30,6 @@ logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter("%(asctime)s : %(message)s", "%Y-%m-%d %H:%M")
 
-#catch all the information about input and output files as well as information on the used tool (fimo or moods)
 def parse_args():
 	
 	parser = argparse.ArgumentParser(prog = '', description = textwrap.dedent('''                           
@@ -40,7 +39,7 @@ def parse_args():
 	
 	required_arguments = parser.add_argument_group('required arguments')
 	required_arguments.add_argument('--bigwig', help='a bigWig-file with scores', required=True)
-	required_arguments.add_argument('--bed', help='set a name for the output file in .bed format', required=True)
+	required_arguments.add_argument('--bed', help='provide a file with peaks in .bed format', required=True)
 
 	#all other arguments are optional
 	parser.add_argument('--output_directory',  default='output', const='output', nargs='?', help='output directory, by default ./output/')
@@ -217,9 +216,55 @@ def check_existing_input_files(args):
 		print('there is no such bed file ' + args.bed_file + ', the exit is forced')
 		sys.exit()
 
+def make_bed_dictionary(bed_file):
+
+	bed_dictionary = {}
+
+	with open(bed_file) as read_bed_file:
+		for bed_line in read_bed_file:
+			bed_line_array = re.split(r'\t', bed_line.rstrip('\n'))
+			if bed_line_array[1].isdigit() and bed_line_array[2].isdigit() and int(bed_line_array[1]) <= int(bed_line_array[2]): #in the real bedfile the second column is a start position, and the third column is an end position, so we are checking if these are integers and if the start position is smaller than the end one
+				key = bed_line_array[0] + ":" + bed_line_array[1] + "-" + bed_line_array[2]
+				value = []
+				for i in range(3, len(bed_line_array)):
+					value.append(bed_line_array[i]) 
+
+				bed_dictionary[key] = value
+			else: #this is not a bed file, force exit
+				logger.info('please make sure the input bed file has a right format, the problem occured on the line ' + bed_line)
+				sys.exit()
+
+	read_bed_file.close()
+
+	return bed_dictionary
+
+def find_window(bed_file):
+	print("entered find window")
+
+	#chromosom = 1 #start with the first chromosom
+	window_length = 0
+
+	with open(bed_file) as read_bed_file:
+		for bed_line in read_bed_file:
+			bed_line_array = re.split(r'\t', bed_line.rstrip('\n'))
+			if bed_line_array[1].isdigit() and bed_line_array[2].isdigit() and int(bed_line_array[1]) <= int(bed_line_array[2]): #in the real bedfile the second column is a start position, and the third column is an end position, so we are checking if these are integers and if the start position is smaller than the end one
+				#if chromosom == int(bed_line_array[0]):
+				peak_len = int(bed_line_array[2]) - int(bed_line_array[1])
+				if peak_len > window_length:
+					window_length = peak_len
+
+	print(window_length)
+
 def main():
 
 	start = time.time()
+
+	#peaks_bed_file = "./small_peaks.bed"
+	peaks_bed_file = "./control_peaks.bed"
+	find_window(peaks_bed_file)
+
+
+
 
 	#args = parse_args()
 
