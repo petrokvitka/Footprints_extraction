@@ -257,6 +257,7 @@ def find_window(bed_file):
 def find_peaks_from_bw(bed_dictionary, bw_file):
 
 	footprint_count = 1
+	all_footprints = {}
 
 	bw_open = pyBigWig.open(bw_file)
 
@@ -269,31 +270,53 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 
 		bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
 
-		all_footprints = {}
-		check_position = 0
+		check_position = 0 #for the whole peak
+		footprint_start = 0 #for each footprint
+		footprint_scores = [] #for each footprint
 
 		for i in range(len(scores_in_peak)):
 			position = i + 1 #calculate the relative position for a score
 			score = scores_in_peak[i] #extract one score from the list
 			if score >= bw_peak_background:
-				if position != (check_position + 1):
+				if position != (check_position + 1): #if this position is not the next with the last position we have checked
+					#save the last footprint
+					if check_position != 0: #if this is not the start of the first footprint within this peak 
+
+						print("i save the footprint!")
+						footprint_name = "footprint_" + str(footprint_count)
+						all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
+						all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': "todo"} #, 'scores': footprint_scores} #<-------------------------- bebe
+						footprint_count += 1
+
+					#start a new footprint
+					footprint_start = position
+					footprint_scores = []
+
+
 					print()
 					print("new footprint ", footprint_count)
 
-					start_pos = position #save current position as start for this footprint <------------------------------ bebe
-					footprint_name = "footprint_" + str(footprint_count)
-					all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-					all_footprints[footprint_name] = {'chromosom': chromosom, 'start': start_pos, 'end': "todo"} #<-------------------------- bebe
+					
 
-					footprint_count += 1
+					
 					check_position = position
+				#else: #continue to write the footprint 
+
 				#save the position where this score is and start to write a footprint
 				#footprint[position] = score
 				#print(position, footprint[position])
 
+				footprint_scores.append(score) #save the current score
 				check_position = position
 
+		print("i save the footprint!")
+		footprint_name = "footprint_" + str(footprint_count)
+		all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
+		all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': "todo"} #, 'scores': footprint_scores} #<-------------------------- bebe
+		footprint_count += 1
+
 		#print(footprint)
+		all_footprints = sorted(all_footprints.items(), key =  lambda x : (x[1]['start']), reverse = False)
 		print(all_footprints)
 
 def main():
