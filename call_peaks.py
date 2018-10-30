@@ -269,9 +269,11 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 		scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, int(positions[0]), int(positions[1]))))) #save the scores to an array
 
 		bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
+		part = bw_peak_background/10 #10 procent of the background
+		bw_peak_background = bw_peak_background + part
 
 		check_position = 0 #for the whole peak
-		footprint_start = 0 #for each footprint
+		footprint_start = 1 #for each footprint
 		footprint_scores = [] #for each footprint
 
 		for i in range(len(scores_in_peak)):
@@ -281,23 +283,20 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 				if position != (check_position + 1): #if this position is not the next with the last position we have checked
 					#save the last footprint
 					if check_position != 0: #if this is not the start of the first footprint within this peak 
-
-						print("i save the footprint!")
+						
+						print("i save the footprint nr " + str(footprint_count) + "!")
 						footprint_name = "footprint_" + str(footprint_count)
+						footprint_score = np.mean(footprint_scores)
 						all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-						all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': "todo"} #, 'scores': footprint_scores} #<-------------------------- bebe
+						all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score}
 						footprint_count += 1
 
 					#start a new footprint
 					footprint_start = position
 					footprint_scores = []
 
-
 					print()
 					print("new footprint ", footprint_count)
-
-					
-
 					
 					check_position = position
 				#else: #continue to write the footprint 
@@ -309,10 +308,11 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 				footprint_scores.append(score) #save the current score
 				check_position = position
 
-		print("i save the footprint!")
+		print("i save the footprint nr " + str(footprint_count) + "!")
 		footprint_name = "footprint_" + str(footprint_count)
+		footprint_score = np.mean(footprint_scores)
 		all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-		all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': "todo"} #, 'scores': footprint_scores} #<-------------------------- bebe
+		all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score}
 		footprint_count += 1
 
 		#print(footprint)
@@ -330,6 +330,8 @@ def main():
 	#bed_dictionary = make_bed_dictionary(peaks_bed_file)
 	bed_dictionary = {}
 	bed_dictionary["chr1:3062743-3063132"] = ["control1"]
+	#bed_dictionary["chr1:3062810-3063132"] = ["control1"] #the 0.position has already a score bigger than the background
+
 
 	bw_file = "./control_footprints.bw"
 
