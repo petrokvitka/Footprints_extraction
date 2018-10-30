@@ -328,6 +328,21 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 
 		return all_footprints
 
+def write_to_bed_file(all_footprints):
+	output_file_name = "footprints.bed" #save in the working directory
+
+	header = ["#chr", "start", "end", "name", "len", "score", "max_pos", "bonus_info"] #a header to know what is in the columns
+
+	output_file = open(output_file_name, 'w') #open a file to write
+
+	output_file.write('\t'.join(header) + '\n') #write the header
+
+	for footprint in all_footprints:
+		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(footprint[1]['len']), str(footprint[1]['score']), str(footprint[1]['max_pos'])]) + '\n')
+
+	output_file.close()
+
+
 def main():
 
 	start = time.time()
@@ -345,8 +360,8 @@ def main():
 
 	bw_file = "./control_footprints.bw"
 
-	all_peaks = find_peaks_from_bw(bed_dictionary, bw_file)
-
+	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file)
+	write_to_bed_file(all_footprints)
 
 	#args = parse_args()
 
