@@ -272,6 +272,9 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 		part = bw_peak_background/10 #10 procent of the background
 		bw_peak_background = bw_peak_background + part
 
+		print(bw_peak_background)
+		print()
+
 		check_position = 0 #for the whole peak
 		footprint_start = 1 #for each footprint
 		footprint_scores = [] #for each footprint
@@ -286,9 +289,26 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 						
 						print("i save the footprint nr " + str(footprint_count) + "!")
 						footprint_name = "footprint_" + str(footprint_count)
+
+						first_max_pos = footprint_scores.index(max(footprint_scores))
+						last_max_pos = first_max_pos #assume that there is only one pos with max score
+
+						#find the region with the highest score
+						for j in range(first_max_pos, len(footprint_scores)):
+							if footprint_scores[j] < first_max_pos:
+								last_max_pos = j
+							else:
+								last_max_pos = len(footprint_scores)
+
+						if first_max_pos != last_max_pos:
+							#find a pos in the middle of these both
+							max_pos = int((last_max_pos - first_max_pos) / 2)
+						else:
+							max_pos = first_max_pos
+
 						footprint_score = np.mean(footprint_scores)
 						all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-						all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score}
+						all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': len(footprint_scores), 'bonus': bed_dictionary[header], 'max_pos': max_pos}
 						footprint_count += 1
 
 					#start a new footprint
@@ -299,11 +319,8 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 					print("new footprint ", footprint_count)
 					
 					check_position = position
-				#else: #continue to write the footprint 
 
-				#save the position where this score is and start to write a footprint
-				#footprint[position] = score
-				#print(position, footprint[position])
+
 
 				footprint_scores.append(score) #save the current score
 				check_position = position
@@ -312,12 +329,14 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 		footprint_name = "footprint_" + str(footprint_count)
 		footprint_score = np.mean(footprint_scores)
 		all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-		all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score}
+		all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': check_position - footprint_start, 'bonus': bed_dictionary[header]}
 		footprint_count += 1
 
-		#print(footprint)
-		all_footprints = sorted(all_footprints.items(), key =  lambda x : (x[1]['start']), reverse = False)
+		all_footprints = sorted(all_footprints.items(), key =  lambda x : (x[1]['start']), reverse = False) 
+
 		print(all_footprints)
+
+		return all_footprints
 
 def main():
 
@@ -329,7 +348,8 @@ def main():
 
 	#bed_dictionary = make_bed_dictionary(peaks_bed_file)
 	bed_dictionary = {}
-	bed_dictionary["chr1:3062743-3063132"] = ["control1"]
+	bed_dictionary["chr1:3062743-3063132"] = ["control_1"]
+	#bed_dictionary["chr1:3343546-3344520"] = ["control_2"]
 	#bed_dictionary["chr1:3062810-3063132"] = ["control1"] #the 0.position has already a score bigger than the background
 
 
