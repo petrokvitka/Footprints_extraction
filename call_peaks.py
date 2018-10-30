@@ -254,6 +254,33 @@ def find_window(bed_file):
 
 	print(window_length)
 
+def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bonus_info_from_bed):
+
+	footprint_name = "footprint_" + str(footprint_count)
+
+	first_max_pos = footprint_scores.index(max(footprint_scores))
+	last_max_pos = first_max_pos #assume that there is only one pos with max score
+
+	#find the region with the highest score
+	for j in range(first_max_pos, len(footprint_scores)):
+		if footprint_scores[j] < first_max_pos:
+			last_max_pos = j
+		else:
+			last_max_pos = len(footprint_scores)
+
+	if first_max_pos != last_max_pos:
+		#find a pos in the middle of these both
+		max_pos = int((last_max_pos - first_max_pos) / 2)
+	else:
+		max_pos = first_max_pos
+
+	footprint_score = np.mean(footprint_scores)
+	all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
+	all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': len(footprint_scores), 'bonus': bonus_info_from_bed, 'max_pos': max_pos}
+	footprint_count += 1
+
+	return footprint_count, all_footprints
+
 def find_peaks_from_bw(bed_dictionary, bw_file):
 
 	footprint_count = 1
@@ -272,9 +299,6 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 		part = bw_peak_background/10 #10 procent of the background
 		bw_peak_background = bw_peak_background + part
 
-		print(bw_peak_background)
-		print()
-
 		check_position = 0 #for the whole peak
 		footprint_start = 1 #for each footprint
 		footprint_scores = [] #for each footprint
@@ -287,54 +311,20 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 					#save the last footprint
 					if check_position != 0: #if this is not the start of the first footprint within this peak 
 						
-						print("i save the footprint nr " + str(footprint_count) + "!")
-						footprint_name = "footprint_" + str(footprint_count)
-
-						first_max_pos = footprint_scores.index(max(footprint_scores))
-						last_max_pos = first_max_pos #assume that there is only one pos with max score
-
-						#find the region with the highest score
-						for j in range(first_max_pos, len(footprint_scores)):
-							if footprint_scores[j] < first_max_pos:
-								last_max_pos = j
-							else:
-								last_max_pos = len(footprint_scores)
-
-						if first_max_pos != last_max_pos:
-							#find a pos in the middle of these both
-							max_pos = int((last_max_pos - first_max_pos) / 2)
-						else:
-							max_pos = first_max_pos
-
-						footprint_score = np.mean(footprint_scores)
-						all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-						all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': len(footprint_scores), 'bonus': bed_dictionary[header], 'max_pos': max_pos}
-						footprint_count += 1
+						footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bed_dictionary[header])
 
 					#start a new footprint
 					footprint_start = position
 					footprint_scores = []
-
-					print()
-					print("new footprint ", footprint_count)
 					
 					check_position = position
-
-
 
 				footprint_scores.append(score) #save the current score
 				check_position = position
 
-		print("i save the footprint nr " + str(footprint_count) + "!")
-		footprint_name = "footprint_" + str(footprint_count)
-		footprint_score = np.mean(footprint_scores)
-		all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-		all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': check_position - footprint_start, 'bonus': bed_dictionary[header]}
-		footprint_count += 1
+		footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bed_dictionary[header])
 
 		all_footprints = sorted(all_footprints.items(), key =  lambda x : (x[1]['start']), reverse = False) 
-
-		print(all_footprints)
 
 		return all_footprints
 
@@ -355,7 +345,7 @@ def main():
 
 	bw_file = "./control_footprints.bw"
 
-	find_peaks_from_bw(bed_dictionary, bw_file)
+	all_peaks = find_peaks_from_bw(bed_dictionary, bw_file)
 
 
 	#args = parse_args()
