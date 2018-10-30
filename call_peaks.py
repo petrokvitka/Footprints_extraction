@@ -311,7 +311,7 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 					#save the last footprint
 					if check_position != 0: #if this is not the start of the first footprint within this peak 
 						
-						footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bed_dictionary[header])
+						footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + int(positions[0]), check_position + int(positions[0]), bed_dictionary[header])
 
 					#start a new footprint
 					footprint_start = position
@@ -322,23 +322,23 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 				footprint_scores.append(score) #save the current score
 				check_position = position
 
-		footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bed_dictionary[header])
+		footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + int(positions[0]), check_position + int(positions[0]), bed_dictionary[header])
 
-		all_footprints = sorted(all_footprints.items(), key =  lambda x : (x[1]['start']), reverse = False) 
+	all_footprints = sorted(all_footprints.items(), key = lambda x : (x[1]['chromosom'], x[1]['start']), reverse = False) 
 
-		return all_footprints
+	return all_footprints
 
 def write_to_bed_file(all_footprints):
 	output_file_name = "footprints.bed" #save in the working directory
 
-	header = ["#chr", "start", "end", "name", "len", "score", "max_pos", "bonus_info"] #a header to know what is in the columns
+	header = ["#chr", "start", "end", "name", "score", "len", "max_pos", "bonus_info"] #a header to know what is in the columns
 
 	output_file = open(output_file_name, 'w') #open a file to write
 
 	output_file.write('\t'.join(header) + '\n') #write the header
 
 	for footprint in all_footprints:
-		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(footprint[1]['len']), str(footprint[1]['score']), str(footprint[1]['max_pos']), '\t'.join(footprint[1]['bonus'])]) + '\n')
+		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(footprint[1]['score']), str(footprint[1]['len']), str(footprint[1]['max_pos']), '\t'.join(footprint[1]['bonus'])]) + '\n')
 
 	output_file.close()
 
@@ -347,13 +347,13 @@ def main():
 
 	start = time.time()
 
-	peaks_bed_file = "./small_peaks.bed"
-	#peaks_bed_file = "./control_peaks.bed"
+	#peaks_bed_file = "./small_peaks.bed"
+	peaks_bed_file = "./control_peaks.bed"
 	#find_window(peaks_bed_file)
 
-	#bed_dictionary = make_bed_dictionary(peaks_bed_file)
-	bed_dictionary = {}
-	bed_dictionary["chr1:3062743-3063132"] = ["control_1", "test", "hihi"]
+	bed_dictionary = make_bed_dictionary(peaks_bed_file)
+	#bed_dictionary = {}
+	#bed_dictionary["chr1:3062743-3063132"] = ["control_1"]
 	#bed_dictionary["chr1:3343546-3344520"] = ["control_2"]
 	#bed_dictionary["chr1:3062810-3063132"] = ["control1"] #the 0.position has already a score bigger than the background
 
