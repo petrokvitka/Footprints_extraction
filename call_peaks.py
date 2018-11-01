@@ -37,9 +37,9 @@ def parse_args():
 		This script produces a file with peaks in .bed format from the file with scores in .bigWig format.
 		'''), epilog='That is what you need to make this script work for you. Enjoy it')
 	
-	required_arguments = parser.add_argument_group('required arguments')
-	required_arguments.add_argument('--bigwig', help='a bigWig-file with scores', required=True)
-	required_arguments.add_argument('--bed', help='provide a file with peaks in .bed format', required=True)
+	#required_arguments = parser.add_argument_group('required arguments')
+	#required_arguments.add_argument('--bigwig', help='a bigWig-file with scores', required=True)
+	#required_arguments.add_argument('--bed', help='provide a file with peaks in .bed format', required=True)
 
 	#all other arguments are optional
 	parser.add_argument('--output_directory',  default='output', const='output', nargs='?', help='output directory, by default ./output/')
@@ -218,6 +218,8 @@ def check_existing_input_files(args):
 
 def make_bed_dictionary(bed_file):
 
+	logger.info('reading of the bed file')
+
 	bed_dictionary = {}
 
 	with open(bed_file) as read_bed_file:
@@ -283,6 +285,8 @@ def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom,
 
 def find_peaks_from_bw(bed_dictionary, bw_file):
 
+	logger.info('looking for footprints withing peaks')
+
 	footprint_count = 1
 	all_footprints = {}
 
@@ -329,11 +333,14 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 	return all_footprints
 
 def write_to_bed_file(all_footprints):
-	output_file_name = "footprints.bed" #save in the working directory
+	output_file_name = "not_sorted_footprints.bed" #save in the working directory
+	sorted_output_file_name = "footprints.bed"
 
 	header = ["#chr", "start", "end", "name", "score", "len", "max_pos", "bonus_info"] #a header to know what is in the columns
 
 	output_file = open(output_file_name, 'w') #open a file to write
+
+	logger.info("print to the output file")
 
 	output_file.write('\t'.join(header) + '\n') #write the header
 
@@ -342,6 +349,14 @@ def write_to_bed_file(all_footprints):
 
 	output_file.close()
 
+	#sort the bed file
+	logger.info('sorting the output file')
+
+	os.system("(head -n 2 " + output_file_name + " && tail -n +3 " + output_file_name + " | sort -k1,1V -k2,2n -k3,3n) > " + sorted_output_file_name)
+
+	logger.info('remove the non-sorted file')
+
+	remove_file(output_file_name)
 
 def main():
 
@@ -351,42 +366,39 @@ def main():
 	peaks_bed_file = "./control_peaks.bed"
 	#find_window(peaks_bed_file)
 
-	bed_dictionary = make_bed_dictionary(peaks_bed_file)
 	#bed_dictionary = {}
 	#bed_dictionary["chr1:3062743-3063132"] = ["control_1"]
 	#bed_dictionary["chr1:3343546-3344520"] = ["control_2"]
 	#bed_dictionary["chr1:3062810-3063132"] = ["control1"] #the 0.position has already a score bigger than the background
 
-
 	bw_file = "./control_footprints.bw"
 
-	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file)
-	write_to_bed_file(all_footprints)
-
-	#args = parse_args()
+	args = parse_args()
 
 	#check_existing_input_files(args)
 	#check if there is an existing directory that user gave as input, otherwise create this directory from the path provided from the user
-	#check_directory(args.output_directory)
+	check_directory(args.output_directory)
 
-	#fh = logging.FileHandler(os.path.join(args.output_directory, "call_peaks_log.txt"))
-	#fh.setLevel(logging.INFO)
-	#fh.setFormatter(formatter)
-	#logger.addHandler(fh)
+	fh = logging.FileHandler(os.path.join(args.output_directory, "call_peaks_log.txt"))
+	fh.setLevel(logging.INFO)
+	fh.setFormatter(formatter)
+	logger.addHandler(fh)
 
-	#ch = logging.StreamHandler()
-	#ch.setLevel(logging.INFO)
-	#ch.setFormatter(formatter)
-	#logger.addHandler(ch)
+	ch = logging.StreamHandler()
+	ch.setLevel(logging.INFO)
+	ch.setFormatter(formatter)
+	logger.addHandler(ch)
 
 	#if user do not want to see the information about the status of jobs, remove the handler, that writes to the terminal
-	#if args.silent:
-	#	logger.removeHandler(ch)
+	if args.silent:
+		logger.removeHandler(ch)
 
 	#logger.info("call_peaks.py was called using these parameters:")
 	#logger.info(vars(args))
 
-	#blablablaaaa
+	bed_dictionary = make_bed_dictionary(peaks_bed_file)
+	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file)
+	write_to_bed_file(all_footprints)
 
 	#logger.info("call_peaks needed %s seconds to generate the output" % (time.time() - start))
 	
