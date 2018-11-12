@@ -283,7 +283,7 @@ def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom,
 
 	return footprint_count, all_footprints
 
-def find_peaks_from_bw(bed_dictionary, bw_file):
+def find_peaks_from_bw(bed_dictionary, bw_file, window_length):
 
 	logger.info('looking for footprints withing peaks')
 
@@ -298,6 +298,13 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 		positions = re.split(r'-', header_splitted[-1])
 
 		scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, int(positions[0]), int(positions[1]))))) #save the scores to an array
+
+		peak_len = len(scores_in_peak)
+
+		if peak_len <= window_length:
+			window_length = peak_len
+
+		#------------------ start work with window
 
 		bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
 		part = bw_peak_background/10 #10 procent of the background
@@ -326,7 +333,9 @@ def find_peaks_from_bw(bed_dictionary, bw_file):
 				footprint_scores.append(score) #save the current score
 				check_position = position
 
-		footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + int(positions[0]), check_position + int(positions[0]), bed_dictionary[header])
+		footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + int(positions[0]), check_position + int(positions[0]), bed_dictionary[header]) #save the last footprint
+
+		#-------------------- end work with window
 
 	all_footprints = sorted(all_footprints.items(), key = lambda x : (x[1]['chromosom'], x[1]['start']), reverse = False) 
 
@@ -373,6 +382,8 @@ def main():
 
 	bw_file = "./control_footprints.bw"
 
+	window_length = 200
+
 	args = parse_args()
 
 	#check_existing_input_files(args)
@@ -397,7 +408,7 @@ def main():
 	#logger.info(vars(args))
 
 	bed_dictionary = make_bed_dictionary(peaks_bed_file)
-	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file)
+	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file, window_length)
 	write_to_bed_file(all_footprints)
 
 	#logger.info("call_peaks needed %s seconds to generate the output" % (time.time() - start))
