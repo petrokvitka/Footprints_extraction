@@ -22,7 +22,6 @@ import pyBigWig
 from statsmodels.sandbox.stats.multicomp import multipletests #for bonfferoni
 import matplotlib.pyplot as plt
 import random
-
 import textwrap
 
 logger = logging.getLogger('call_peaks')
@@ -42,8 +41,10 @@ def parse_args():
 	#required_arguments.add_argument('--bed', help='provide a file with peaks in .bed format', required=True)
 
 	#all other arguments are optional
-	parser.add_argument('--output_directory',  default='output', const='output', nargs='?', help='output directory, by default ./output/')
-	parser.add_argument('--window_length', default='100', type=int, help='enter the length for a window, by defauld 100 bp')
+	#parser.add_argument('--output_directory',  default='output', const='output', nargs='?', help='output directory, by default ./output/')
+	parser.add_argument('--output_file', default='call_peaks_output.bed', type=str, help='enter a name for the output file, by default ./call_peaks_output.bed')
+	parser.add_argument('--window_length', default=200, type=int, help='enter the length for a window, by defauld 200 bp')
+	parser.add_argument('--step', default=100, type=int, help='enter a step to move the window, by default 100 bp')
 	parser.add_argument('--threshold',  default=0.3, type=float, help='enter the threshold for peaks searching, by defauld 0.3')
 	parser.add_argument('--silent', action='store_true', help='while working with data write the information only into ./call_peaks_log.txt')
 	args = parser.parse_args()
@@ -283,6 +284,38 @@ def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom,
 
 	return footprint_count, all_footprints
 
+def search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary_entry):
+	bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
+	part = bw_peak_background/10 #10 procent of the background
+	bw_peak_background = bw_peak_background + part
+
+	check_position = 0 #for the whole peak
+	footprint_start = 1 #for each footprint
+	footprint_scores = [] #for each footprint
+
+	for i in range(len(scores_in_peak)):
+		position = i + 1 #calculate the relative position for a score
+		score = scores_in_peak[i] #extract one score from the list
+		if score >= bw_peak_background:
+			if position != (check_position + 1): #if this position is not the next with the last position we have checked
+				#save the last footprint
+				if check_position != 0: #if this is not the start of the first footprint within this peak 
+					
+					footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry)
+
+				#start a new footprint
+				footprint_start = position
+				footprint_scores = []
+					
+				check_position = position
+
+			footprint_scores.append(score) #save the current score
+			check_position = position
+
+	footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry) #save the last footprint
+
+	return all_footprints, footprint_count
+
 def find_peaks_from_bw(bed_dictionary, bw_file, window_length):
 
 	logger.info('looking for footprints withing peaks')
@@ -296,44 +329,20 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length):
 		header_splitted = re.split(r':', header)
 		chromosom = header_splitted[0]
 		positions = re.split(r'-', header_splitted[-1])
+		peak_start = int(positions[0])
+		peak_end = int(positions[1])
 
-		scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, int(positions[0]), int(positions[1]))))) #save the scores to an array
+		scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, peak_start, peak_end)))) #save the scores to an array
 
 		peak_len = len(scores_in_peak)
 
-		if peak_len <= window_length:
-			window_length = peak_len
+		#if peak_len <= window_length:
+		#	window_length = peak_len
 
+		window_length = peak_len
 		#------------------ start work with window
 
-		bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
-		part = bw_peak_background/10 #10 procent of the background
-		bw_peak_background = bw_peak_background + part
-
-		check_position = 0 #for the whole peak
-		footprint_start = 1 #for each footprint
-		footprint_scores = [] #for each footprint
-
-		for i in range(len(scores_in_peak)):
-			position = i + 1 #calculate the relative position for a score
-			score = scores_in_peak[i] #extract one score from the list
-			if score >= bw_peak_background:
-				if position != (check_position + 1): #if this position is not the next with the last position we have checked
-					#save the last footprint
-					if check_position != 0: #if this is not the start of the first footprint within this peak 
-						
-						footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + int(positions[0]), check_position + int(positions[0]), bed_dictionary[header])
-
-					#start a new footprint
-					footprint_start = position
-					footprint_scores = []
-					
-					check_position = position
-
-				footprint_scores.append(score) #save the current score
-				check_position = position
-
-		footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + int(positions[0]), check_position + int(positions[0]), bed_dictionary[header]) #save the last footprint
+		all_footprints, footprint_count = search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header])
 
 		#-------------------- end work with window
 
@@ -343,7 +352,7 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length):
 
 def write_to_bed_file(all_footprints):
 	output_file_name = "not_sorted_footprints.bed" #save in the working directory
-	sorted_output_file_name = "footprints.bed"
+	sorted_output_file_name = "footprints_new.bed"
 
 	header = ["#chr", "start", "end", "name", "score", "len", "max_pos", "bonus_info"] #a header to know what is in the columns
 
@@ -388,9 +397,10 @@ def main():
 
 	#check_existing_input_files(args)
 	#check if there is an existing directory that user gave as input, otherwise create this directory from the path provided from the user
-	check_directory(args.output_directory)
+	#check_directory(args.output_directory)
 
-	fh = logging.FileHandler(os.path.join(args.output_directory, "call_peaks_log.txt"))
+	#fh = logging.FileHandler(os.path.join(args.output_directory, "call_peaks_log.txt"))
+	fh = logging.FileHandler("call_peaks_log.txt")
 	fh.setLevel(logging.INFO)
 	fh.setFormatter(formatter)
 	logger.addHandler(fh)
