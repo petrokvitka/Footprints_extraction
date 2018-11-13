@@ -156,9 +156,21 @@ def find_window(bed_file):
 
 	print(window_length)
 
-def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bonus_info_from_bed, footprints_dict):
+def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bonus_info_from_bed, footprints_dict, last_footprint):
 
 	if len(footprint_scores) > 2: #exclude small regions to not work with them
+
+		if last_footprint != "": #if there are already saved footprints
+			last_chromosom_and_positions = re.split(r':', last_footprint)
+			last_positions = re.split(r'-', last_chromosom_and_positions[-1])
+
+			last_start = int(last_positions[0])
+			last_end = int(last_positions[1])
+		else:
+			last_start = 0
+			last_end = 0
+
+		#-------------- max score position
 
 		first_max_pos = footprint_scores.index(max(footprint_scores))
 		last_max_pos = first_max_pos #assume that there is only one pos with max score
@@ -175,8 +187,11 @@ def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom,
 			max_pos = int((last_max_pos - first_max_pos) / 2)
 		else:
 			max_pos = first_max_pos
+		#-------------------------------------
 
 		footprint_score = np.mean(footprint_scores)
+
+		#--------------- checking for existing and overlapping footprints
 
 		search_key = str(chromosom) + ":" + str(footprint_start) + "-" + str(check_position)
 
@@ -187,25 +202,40 @@ def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom,
 				all_footprints[footprints_dict[search_key]]['score'] = footprint_score
 				#update the max_pos
 				all_footprints[footprints_dict[search_key]]['max_pos'] = max_pos
+
+				last_footprint = search_key
 			#else do nothing
 		else:
-			#make a new footprint
-			footprint_name = "footprint_" + str(footprint_count)
+			#check for overlapping footprints
+			if (footprint_start <= last_end) and (all_footprints[footprints_dict[last_footprint]]['score'] <= footprint_score):
+				#merge the last footprint with the current one
+				footprint_start = min(last_start, footprint_start)
+				check_position = max(last_end, check_position)
+				all_footprints[footprints_dict[last_footprint]] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': len(footprint_scores), 'bonus': bonus_info_from_bed, 'max_pos': max_pos}
 
-			all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-			all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': len(footprint_scores), 'bonus': bonus_info_from_bed, 'max_pos': max_pos}
+				search_key = str(chromosom) + ":" + str(footprint_start) + "-" + str(check_position)
+				footprints_dict[search_key] = footprints_dict[last_footprint]
+				footprints_dict.pop(last_footprint)
+				last_footprint = search_key
+			else:
+				#make a new footprint
+				footprint_name = "footprint_" + str(footprint_count)
 
-			footprints_dict[search_key] = footprint_name
+				all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
+				all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': len(footprint_scores), 'bonus': bonus_info_from_bed, 'max_pos': max_pos}
 
-			footprint_count += 1
+				footprints_dict[search_key] = footprint_name
+				last_footprint = search_key
+
+				footprint_count += 1
 
 	#else do nothint
 
-	return footprint_count, all_footprints, footprints_dict
+	return footprint_count, all_footprints, footprints_dict, last_footprint
 
 def search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary_entry, step):
 
-	#logger.info("searching for footprints in window")
+	last_footprint = "" #needed to resolve overlapping footprints
 
 	peak_len = len(scores_in_peak)
 	parts = []
@@ -253,7 +283,7 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 					#save the last footprint
 					if check_position != 0: #if this is not the start of the first footprint within this peak 
 
-						footprint_count, all_footprints, footprints_dict = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start + parts_positions[j], check_position + peak_start + parts_positions[j], bed_dictionary_entry, footprints_dict)
+						footprint_count, all_footprints, footprints_dict, last_footprint = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start + parts_positions[j], check_position + peak_start + parts_positions[j], bed_dictionary_entry, footprints_dict, last_footprint)
 
 					#start a new footprint
 					footprint_start = position
@@ -264,7 +294,7 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 				footprint_scores.append(score) #save the current score
 				check_position = position
 
-		footprint_count, all_footprints, footprints_dict = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start + parts_positions[j], check_position + peak_start + parts_positions[j], bed_dictionary_entry, footprints_dict) #save the last footprint
+		footprint_count, all_footprints, footprints_dict, last_footprint = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start + parts_positions[j], check_position + peak_start + parts_positions[j], bed_dictionary_entry, footprints_dict, last_footprint) #save the last footprint
 
 	return all_footprints, footprint_count
 
