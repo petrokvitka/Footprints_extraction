@@ -70,116 +70,15 @@ def check_name(name_to_test):
 		name = '_' + name
 	return name
 
-#check if the bw score is already saved, if so check if it is bigger than the new one
-def save_bw_score(key_for_bed_dict, matches_dict, bw_score, moods_score, which_score):
-
-	if np.isnan(bw_score): bw_score = 0.0
-
-	#bw_score = moods_score * bw_score #apply moods score as well 
-
-	if key_for_bed_dict in matches_dict:
-
-		if which_score == "mean":
-			#save the mean of both scores
-			matches_dict[key_for_bed_dict] = np.mean([matches_dict[key_for_bed_dict], bw_score])
-		
-		elif which_score == "greater":
-			#save the biggest of scores
-			if matches_dict[key_for_bed_dict] < bw_score:
-				matches_dict[key_for_bed_dict] = bw_score
-
-	else:
-		matches_dict[key_for_bed_dict] = bw_score
-
-	return matches_dict
-
 def remove_file(file):
 	if os.path.isfile(file):
 		os.remove(file)
-
-def clean_directory(cleans, output_directory, motif):
-	
-	for clean in cleans:
-		if clean == 'all' or clean == 'cut_motifs':
-			remove_file(motif)
-			#the output_merge.fa will be deleted after processing of the multiprocessing
-
-def tool_make_output(motif, genome, output_directory, cleans, p_value, bed_dictionary, moods_bg, condition1, condition2, global_mean, global_std, which_score):
-
-	standard_moods_bg = 0.25, 0.25, 0.25, 0.25
-
-	control_dict = {}
-	overexpression_dict = {}
-
-	differences = []
-	control_dict, overexpression_dict, differences = call_moods(motif, genome, output_directory, p_value, standard_moods_bg, condition2, condition1, control_dict, overexpression_dict, differences, which_score) 
-	
-	#make arrays of the dictionaries
-	control_array = []
-	overexpression_array = []
-
-	for key in control_dict:
-		control_array.append(control_dict[key])
-		overexpression_array.append(overexpression_dict[key])
-
-	motif_name = motif.replace(output_directory, '')
-	motif_name = motif_name.replace('/', '')
-
-	#make the wilcoxon signed-rank test
-	my_wilcoxon_pvalue, direction, differences, differences_normalized, motif_std = my_wilcoxon(condition2, condition1, control_array, overexpression_array, global_mean, global_std, motif_name, correction = False)
-
-	clean_directory(cleans, output_directory, motif)
-
-	return my_wilcoxon_pvalue, direction, differences, differences_normalized, motif_std
 
 def make_name_from_path(full_path, output_directory, ending):
 	return os.path.join(output_directory, get_name_from_path(full_path) + ending)
 	
 def get_name_from_path(full_path):
 	return os.path.splitext(os.path.basename(full_path))[0]
-
-def compute_differences(bed_dictionary, condition1, condition2):
-	logger.info("the mean and standard deviation for the differences in peaks will be count now")
-
-	bw_cond1 = pyBigWig.open(condition1)
-	bw_cond2 = pyBigWig.open(condition2)
-
-	global_differences = {} #dict
-	differences_array = [] #to compute the mean at the end
-	cond1_array = []
-	cond2_array = []
-
-	for header in bed_dictionary:
-		header_splitted = re.split(r':', header)
-		chromosom = header_splitted[0]
-		positions = re.split(r'-', header_splitted[-1])
-
-		#compute the background difference for this peak
-		bw_global_score_cond1 = np.mean(np.nan_to_num(np.array(list(bw_cond1.values(chromosom, int(positions[0]), int(positions[1]))))))
-		bw_global_score_cond2 = np.mean(np.nan_to_num(np.array(list(bw_cond2.values(chromosom, int(positions[0]), int(positions[1]))))))
-		bw_global_difference = bw_global_score_cond2 - bw_global_score_cond1
-
-		global_differences[header] = bw_global_difference
-
-		cond1_array.append(bw_global_score_cond1)
-		cond2_array.append(bw_global_score_cond2)
-
-		differences_array.append(bw_global_difference)
-
-	bw_cond1.close()
-	bw_cond2.close()
-
-	mu = np.mean(differences_array)
-	std = np.std(differences_array, ddof = 1)
-
-	mu_cond1 = np.mean(cond1_array)
-
-	mu_cond2 = np.mean(cond2_array)
-
-	cond1_name = get_name_from_path(condition1)
-	cond2_name = get_name_from_path(condition2)
-
-	return mu, std
 
 def is_fasta(check_fasta):
 	if not os.path.isfile(check_fasta):
@@ -257,7 +156,7 @@ def find_window(bed_file):
 
 	print(window_length)
 
-def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bonus_info_from_bed):
+def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bonus_info_from_bed, footprints_dict):
 
 	footprint_name = "footprint_" + str(footprint_count)
 
@@ -278,45 +177,82 @@ def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom,
 		max_pos = first_max_pos
 
 	footprint_score = np.mean(footprint_scores)
+
+	#check if this footprint is already saved and if so, save the footprint with bigger score
+
+
 	all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
 	all_footprints[footprint_name] = {'chromosom': chromosom, 'start': footprint_start, 'end': check_position, 'score': footprint_score, 'len': len(footprint_scores), 'bonus': bonus_info_from_bed, 'max_pos': max_pos}
 	footprint_count += 1
 
+	#print(all_footprints[footprint_name])
+
 	return footprint_count, all_footprints
 
-def search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary_entry):
-	bw_peak_background = np.mean(scores_in_peak) #find the mean of all scores within one peak
-	part = bw_peak_background/10 #10 procent of the background
-	bw_peak_background = bw_peak_background + part
+def search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary_entry, step):
 
-	check_position = 0 #for the whole peak
-	footprint_start = 1 #for each footprint
-	footprint_scores = [] #for each footprint
+	logger.info("searching for footprints in window")
 
-	for i in range(len(scores_in_peak)):
-		position = i + 1 #calculate the relative position for a score
-		score = scores_in_peak[i] #extract one score from the list
-		if score >= bw_peak_background:
-			if position != (check_position + 1): #if this position is not the next with the last position we have checked
-				#save the last footprint
-				if check_position != 0: #if this is not the start of the first footprint within this peak 
-					
-					footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry)
+	peak_len = len(scores_in_peak)
+	parts = []
 
-				#start a new footprint
-				footprint_start = position
-				footprint_scores = []
-					
+	footprints_dict = {}
+
+	#if necessary divide the peak with help of a sliding window
+	if peak_len <= window_length:
+		window_length = peak_len
+		parts.append(scores_in_peak)
+	else:
+		pos = 0
+		while pos < (peak_len - step):
+			if (pos + window_length) >= len(scores_in_peak):
+				part = scores_in_peak[pos:]
+			else:
+				part = scores_in_peak[pos:pos + window_length]
+		
+			pos = pos + step
+
+			if len(part) != 1: #otherwise it makes no sense to look on the mean within this part and look for footprints
+				parts.append(part)
+
+	print(peak_len)
+	print("number of parts ", len(parts))
+
+	#look in each window and save the footprints
+	for window in parts:
+
+		bw_peak_background = np.mean(window) #find the mean of all scores within one peak
+		part = bw_peak_background/10 #10 procent of the background
+		bw_peak_background = bw_peak_background + part
+
+		check_position = 0 #for the whole peak
+		footprint_start = 1 #for each footprint
+		footprint_scores = [] #for each footprint
+
+		for i in range(len(window)):
+			position = i + 1 #calculate the relative position for a score
+			score = window[i] #extract one score from the list
+			if score >= bw_peak_background:
+				if position != (check_position + 1): #if this position is not the next with the last position we have checked
+					#save the last footprint
+					if check_position != 0: #if this is not the start of the first footprint within this peak 
+						
+						footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry, footprints_dict)
+
+					#start a new footprint
+					footprint_start = position
+					footprint_scores = []
+						
+					check_position = position
+
+				footprint_scores.append(score) #save the current score
 				check_position = position
 
-			footprint_scores.append(score) #save the current score
-			check_position = position
-
-	footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry) #save the last footprint
+		footprint_count, all_footprints = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry, footprints_dict) #save the last footprint
 
 	return all_footprints, footprint_count
 
-def find_peaks_from_bw(bed_dictionary, bw_file, window_length):
+def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step):
 
 	logger.info('looking for footprints withing peaks')
 
@@ -336,15 +272,7 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length):
 
 		peak_len = len(scores_in_peak)
 
-		#if peak_len <= window_length:
-		#	window_length = peak_len
-
-		window_length = peak_len
-		#------------------ start work with window
-
-		all_footprints, footprint_count = search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header])
-
-		#-------------------- end work with window
+		all_footprints, footprint_count = search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step)
 
 	all_footprints = sorted(all_footprints.items(), key = lambda x : (x[1]['chromosom'], x[1]['start']), reverse = False) 
 
@@ -380,8 +308,8 @@ def main():
 
 	start = time.time()
 
-	#peaks_bed_file = "./small_peaks.bed"
-	peaks_bed_file = "./control_peaks.bed"
+	peaks_bed_file = "./small_peaks.bed"
+	#peaks_bed_file = "./control_peaks.bed"
 	#find_window(peaks_bed_file)
 
 	#bed_dictionary = {}
@@ -392,6 +320,7 @@ def main():
 	bw_file = "./control_footprints.bw"
 
 	window_length = 200
+	step = 100
 
 	args = parse_args()
 
@@ -418,7 +347,7 @@ def main():
 	#logger.info(vars(args))
 
 	bed_dictionary = make_bed_dictionary(peaks_bed_file)
-	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file, window_length)
+	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file, window_length, step)
 	write_to_bed_file(all_footprints)
 
 	#logger.info("call_peaks needed %s seconds to generate the output" % (time.time() - start))
