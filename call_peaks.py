@@ -232,11 +232,6 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 
 			pos = pos + step
 
-	print(parts_positions)
-	print(peak_len)
-	#print(peak_len)
-	#print("number of parts ", len(parts))
-
 	#look in each window and save the footprints
 	for j in range(len(parts)):
 
@@ -246,8 +241,7 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 		part = bw_peak_background/10 #10 procent of the background
 		bw_peak_background = bw_peak_background + part
 		
-		check_position = parts_positions[j] #for the whole peak <----- the start position not within the window, but within the peak!!!
-		print(check_position)
+		check_position = parts_positions[j] #the start position not within the window, but within the peak!!!
 		footprint_start = check_position #for each footprint
 		footprint_scores = [] #for each footprint
 
@@ -259,9 +253,6 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 					#save the last footprint
 					if check_position != 0: #if this is not the start of the first footprint within this peak 
 
-						print(peak_start)
-						print(footprint_start + peak_start)
-						print(check_position + peak_start)
 						footprint_count, all_footprints, footprints_dict = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start + parts_positions[j], check_position + peak_start + parts_positions[j], bed_dictionary_entry, footprints_dict)
 
 					#start a new footprint
