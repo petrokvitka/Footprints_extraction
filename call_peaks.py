@@ -158,10 +158,6 @@ def find_window(bed_file):
 
 def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start, check_position, bonus_info_from_bed, footprints_dict):
 
-	print(footprint_scores)
-	print(len(footprint_scores))
-	print()
-
 	if len(footprint_scores) > 2: #exclude small regions to not work with them
 
 		first_max_pos = footprint_scores.index(max(footprint_scores))
@@ -213,6 +209,7 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 
 	peak_len = len(scores_in_peak)
 	parts = []
+	parts_positions = []
 
 	footprints_dict = {}
 
@@ -220,6 +217,7 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 	if peak_len <= window_length:
 		window_length = peak_len
 		parts.append(scores_in_peak)
+		parts_positions.append(0)
 	else:
 		pos = 0
 		while pos < (peak_len - step):
@@ -227,24 +225,30 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 				part = scores_in_peak[pos:]
 			else:
 				part = scores_in_peak[pos:pos + window_length]
-		
-			pos = pos + step
 
 			if len(part) != 1: #otherwise it makes no sense to look on the mean within this part and look for footprints
 				parts.append(part)
+				parts_positions.append(pos)
 
+			pos = pos + step
+
+	print(parts_positions)
+	print(peak_len)
 	#print(peak_len)
 	#print("number of parts ", len(parts))
 
 	#look in each window and save the footprints
-	for window in parts:
+	for j in range(len(parts)):
+
+		window = parts[j]
 
 		bw_peak_background = np.mean(window) #find the mean of all scores within one peak
 		part = bw_peak_background/10 #10 procent of the background
 		bw_peak_background = bw_peak_background + part
-
-		check_position = 0 #for the whole peak
-		footprint_start = 1 #for each footprint
+		
+		check_position = parts_positions[j] #for the whole peak <----- the start position not within the window, but within the peak!!!
+		print(check_position)
+		footprint_start = check_position #for each footprint
 		footprint_scores = [] #for each footprint
 
 		for i in range(len(window)):
@@ -255,7 +259,10 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 					#save the last footprint
 					if check_position != 0: #if this is not the start of the first footprint within this peak 
 
-						footprint_count, all_footprints, footprints_dict = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry, footprints_dict)
+						print(peak_start)
+						print(footprint_start + peak_start)
+						print(check_position + peak_start)
+						footprint_count, all_footprints, footprints_dict = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start + parts_positions[j], check_position + peak_start + parts_positions[j], bed_dictionary_entry, footprints_dict)
 
 					#start a new footprint
 					footprint_start = position
@@ -266,7 +273,7 @@ def search_in_window(all_footprints, footprint_count, chromosom, peak_start, pea
 				footprint_scores.append(score) #save the current score
 				check_position = position
 
-		footprint_count, all_footprints, footprints_dict = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start, check_position + peak_start, bed_dictionary_entry, footprints_dict) #save the last footprint
+		footprint_count, all_footprints, footprints_dict = save_footprint(footprint_count, footprint_scores, all_footprints, chromosom, footprint_start + peak_start + parts_positions[j], check_position + peak_start + parts_positions[j], bed_dictionary_entry, footprints_dict) #save the last footprint
 
 	return all_footprints, footprint_count
 
@@ -327,7 +334,8 @@ def main():
 	start = time.time()
 
 	#peaks_bed_file = "./small_peaks.bed"
-	peaks_bed_file = "./control_peaks.bed"
+	#peaks_bed_file = "./control_peaks.bed"
+	peaks_bed_file = "./one_peak.bed"
 	#find_window(peaks_bed_file)
 
 	#bed_dictionary = {}
