@@ -309,6 +309,9 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step):
 	bw_open = pyBigWig.open(bw_file)
 
 	for header in bed_dictionary:
+
+		peak_footprints = {}
+
 		header_splitted = re.split(r':', header)
 		chromosom = header_splitted[0]
 		positions = re.split(r'-', header_splitted[-1])
@@ -319,7 +322,11 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step):
 
 		peak_len = len(scores_in_peak)
 
-		all_footprints, footprint_count = search_in_window(all_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step)
+		peak_footprints, footprint_count = search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step)
+
+		for footprint_name in peak_footprints.keys():
+			all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
+			all_footprints[footprint_name] = peak_footprints[footprint_name]
 
 	all_footprints = sorted(all_footprints.items(), key = lambda x : (x[1]['chromosom'], x[1]['start']), reverse = False) 
 
