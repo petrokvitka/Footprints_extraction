@@ -195,6 +195,7 @@ def save_footprint(footprint_count, footprint_scores, all_footprints, chromosom,
 
 		search_key = str(chromosom) + ":" + str(footprint_start) + "-" + str(check_position)
 
+
 		#check if this footprint is already saved and if so, save the footprint with bigger score
 		if search_key in footprints_dict.keys():
 			if footprint_score > all_footprints[footprints_dict[search_key]]['score']: #the value of footprints_dict[search_key] is a name of footprint
