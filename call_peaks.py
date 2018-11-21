@@ -45,7 +45,7 @@ def parse_args():
 	parser.add_argument('--output_file', default='call_peaks_output.bed', type=str, help='enter a name for the output file, by default ./call_peaks_output.bed')
 	parser.add_argument('--window_length', default=200, type=int, help='enter the length for a window, by defauld 200 bp')
 	parser.add_argument('--step', default=100, type=int, help='enter a step to move the window, by default 100 bp')
-	parser.add_argument('--threshold',  default=0.3, type=float, help='enter the threshold for peaks searching, by defauld 0.3')
+	parser.add_argument('--percentage',  default=10, type=int, help='enter a percentage to be added to background while searching for footprints, by default 10%')
 	parser.add_argument('--silent', action='store_true', help='while working with data write the information only into ./call_peaks_log.txt')
 	args = parser.parse_args()
 
@@ -234,7 +234,7 @@ def save_footprint(footprint_count, footprint_scores, peak_footprints, chromosom
 
 	return footprint_count, peak_footprints
 
-def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary_entry, step):
+def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary_entry, step, percentage):
 
 	peak_len = len(scores_in_peak)
 	parts = []
@@ -264,9 +264,9 @@ def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, pe
 
 		window = parts[j]
 
-		#-------------- change to parameter that a user can set
+		#-------------- add some percent to the background to avoid the noice we don't want to have
 		bw_peak_background = np.mean(window) #find the mean of all scores within one peak
-		part = bw_peak_background/10 #10 procent of the background
+		part = (percentage*bw_peak_background)/100 #x procent of the background
 		bw_peak_background = bw_peak_background + part
 		#----------------------------------------------------------
 		
@@ -297,7 +297,7 @@ def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, pe
 
 	return peak_footprints, footprint_count
 
-def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step):
+def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, percentage):
 
 	logger.info('looking for footprints withing peaks')
 
@@ -320,7 +320,7 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step):
 
 		peak_len = len(scores_in_peak)
 
-		peak_footprints, footprint_count = search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step)
+		peak_footprints, footprint_count = search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step, percentage)
 
 		for footprint_name in peak_footprints.keys():
 			all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
@@ -400,7 +400,7 @@ def main():
 	#logger.info(vars(args))
 
 	bed_dictionary = make_bed_dictionary(peaks_bed_file)
-	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file, window_length, step)
+	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, args.percentage)
 	write_to_bed_file(all_footprints)
 
 	logger.info("the number of peaks: " + str(len(bed_dictionary)))
