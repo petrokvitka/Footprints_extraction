@@ -129,23 +129,6 @@ def make_bed_dictionary(bed_file):
 
 	return bed_dictionary
 
-#unbenutzt
-def find_window(bed_file):
-	
-	#chromosom = 1 #start with the first chromosom
-	window_length = 0
-
-	with open(bed_file) as read_bed_file:
-		for bed_line in read_bed_file:
-			bed_line_array = re.split(r'\t', bed_line.rstrip('\n'))
-			if bed_line_array[1].isdigit() and bed_line_array[2].isdigit() and int(bed_line_array[1]) <= int(bed_line_array[2]): #in the real bedfile the second column is a start position, and the third column is an end position, so we are checking if these are integers and if the start position is smaller than the end one
-				#if chromosom == int(bed_line_array[0]):
-				peak_len = int(bed_line_array[2]) - int(bed_line_array[1])
-				if peak_len > window_length:
-					window_length = peak_len
-
-	print(window_length)
-
 def save_footprint(footprint_count, footprint_scores, peak_footprints, chromosom, footprint_start, footprint_end, bonus_info_from_bed):
 
 	save_current_footprint = False
