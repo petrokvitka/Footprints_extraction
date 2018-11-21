@@ -36,9 +36,9 @@ def parse_args():
 		This script produces a file with peaks in .bed format from the file with scores in .bigWig format.
 		'''), epilog='That is what you need to make this script work for you. Enjoy it')
 	
-	#required_arguments = parser.add_argument_group('required arguments')
-	#required_arguments.add_argument('--bigwig', help='a bigWig-file with scores', required=True)
-	#required_arguments.add_argument('--bed', help='provide a file with peaks in .bed format', required=True)
+	required_arguments = parser.add_argument_group('required arguments')
+	required_arguments.add_argument('--bigwig', help='a bigWig-file with scores', required=True)
+	required_arguments.add_argument('--bed', help='provide a file with peaks in .bed format', required=True)
 
 	#all other arguments are optional
 	#parser.add_argument('--output_directory',  default='output', const='output', nargs='?', help='output directory, by default ./output/')
@@ -82,27 +82,14 @@ def get_name_from_path(full_path):
 
 def check_existing_input_files(args):
 
-	if not is_fasta(args.genome):
-		#logger.info('please make sure the input genome file has a fasta format')
-		print('please make sure the input genome file has a fasta format')
-		sys.exit()
-	if not os.path.isfile(args.condition1) or not os.path.isfile(args.condition2):
-		#logger.info('please make sure the both files with conditions to compare exist')
-		print('please make sure the both files with conditions to compare exist')
-		sys.exit()
-	if not args.condition1.endswith('.bw') or not args.condition2.endswith('.bw'):
-		#logger.info('please check if the both conditions files are in bigWig format')
-		print('please check if the both conditions files are in bigWig format')
-		sys.exit()
-	#check if the file with motifs exists
-	if not os.path.isfile(args.motifs):
-		#logger.info('there is no file with motifs, the exit is forced')
-		print('there is no file with motifs, the exit is forced')
+	#check if the bigWig file exists
+	if not os.path.isfile(args.bigwig):
+		print('there is no such bigWig file ' + args.bigwig + ', the exit is forced')
 		sys.exit()
 	#check if the bed file exists
-	if not os.path.isfile(args.bed_file):
+	if not os.path.isfile(args.bed):
 		#logger.info('there is no such bed file ' + args.bed_file + ', the exit is forced')
-		print('there is no such bed file ' + args.bed_file + ', the exit is forced')
+		print('there is no such bed file ' + args.bed + ', the exit is forced')
 		sys.exit()
 
 def make_bed_dictionary(bed_file):
@@ -282,7 +269,7 @@ def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, pe
 
 def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, percentage):
 
-	logger.info('looking for footprints withing peaks')
+	logger.info('looking for footprints within peaks')
 
 	footprint_count = 1
 	all_footprints = {}
@@ -313,9 +300,8 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, percentage)
 
 	return all_footprints
 
-def write_to_bed_file(all_footprints):
-	output_file_name = "not_sorted_footprints.bed" #save in the working directory
-	sorted_output_file_name = "footprints_new.bed"
+def write_to_bed_file(all_footprints, sorted_output_file_name):
+	output_file_name = "not_sorted_" + sorted_output_file_name #save in the working directory
 
 	header = ["#chr", "start", "end", "name", "score", "len", "max_pos", "bonus_info"] #a header to know what is in the columns
 
@@ -326,7 +312,7 @@ def write_to_bed_file(all_footprints):
 	output_file.write('\t'.join(header) + '\n') #write the header
 
 	for footprint in all_footprints:
-		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(footprint[1]['score']), str(footprint[1]['len']), str(footprint[1]['max_pos']), '\t'.join(footprint[1]['bonus'])]) + '\n')
+		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(round(footprint[1]['score'], 6)), str(footprint[1]['len']), str(footprint[1]['max_pos']), '\t'.join(footprint[1]['bonus'])]) + '\n')
 
 	output_file.close()
 
@@ -344,23 +330,18 @@ def main():
 	start = time.time()
 
 	#peaks_bed_file = "./small_peaks.bed"
-	peaks_bed_file = "./control_peaks.bed"
+	#peaks_bed_file = "./control_peaks.bed"
 	#peaks_bed_file = "./one_peak.bed"
 	#find_window(peaks_bed_file)
 
-	#bed_dictionary = {}
-	#bed_dictionary["chr1:3062743-3063132"] = ["control_1"]
-	#bed_dictionary["chr1:3343546-3344520"] = ["control_2"]
-	#bed_dictionary["chr1:3062810-3063132"] = ["control1"] #the 0.position has already a score bigger than the background
+	#bw_file = "./control_footprints.bw"
 
-	bw_file = "./control_footprints.bw"
-
-	window_length = 200
-	step = 100
+	#window_length = 200
+	#step = 100
 
 	args = parse_args()
 
-	#check_existing_input_files(args)
+	check_existing_input_files(args)
 	#check if there is an existing directory that user gave as input, otherwise create this directory from the path provided from the user
 	#check_directory(args.output_directory)
 
@@ -379,17 +360,17 @@ def main():
 	if args.silent:
 		logger.removeHandler(ch)
 
-	#logger.info("call_peaks.py was called using these parameters:")
-	#logger.info(vars(args))
+	logger.info("call_peaks.py was called using these parameters:")
+	logger.info(vars(args))
 
-	bed_dictionary = make_bed_dictionary(peaks_bed_file)
-	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, args.percentage)
-	write_to_bed_file(all_footprints)
+	bed_dictionary = make_bed_dictionary(args.bed)
+	all_footprints = find_peaks_from_bw(bed_dictionary, args.bigwig, args.window_length, args.step, args.percentage)
+	write_to_bed_file(all_footprints, args.output_file)
 
 	logger.info("the number of peaks: " + str(len(bed_dictionary)))
 	logger.info("the number of footprints: " + str(len(all_footprints)))
 
-	logger.info("call_peaks needed %s minutes to generate the output" % ((time.time() - start)/60))
+	logger.info("call_peaks needed %s minutes to generate the output" % (round((time.time() - start)/60, 2)))
 	
 	for handler in logger.handlers:
 		handler.close()
