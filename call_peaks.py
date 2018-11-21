@@ -10,18 +10,18 @@ import sys
 import os
 import re
 import time
-import multiprocessing
+#import multiprocessing
 import logging
-import subprocess
-from Bio import SeqIO
-import Bio.SeqIO.FastaIO as bio
+#import subprocess
+#from Bio import SeqIO
+#import Bio.SeqIO.FastaIO as bio
 import numpy as np
 from collections import defaultdict
-from scipy import stats
+#from scipy import stats
 import pyBigWig
-from statsmodels.sandbox.stats.multicomp import multipletests #for bonfferoni
-import matplotlib.pyplot as plt
-import random
+#from statsmodels.sandbox.stats.multicomp import multipletests #for bonfferoni
+#import matplotlib.pyplot as plt
+#import random
 import textwrap
 
 logger = logging.getLogger('call_peaks')
@@ -328,16 +328,6 @@ def write_to_bed_file(all_footprints, sorted_output_file_name):
 def main():
 
 	start = time.time()
-
-	#peaks_bed_file = "./small_peaks.bed"
-	#peaks_bed_file = "./control_peaks.bed"
-	#peaks_bed_file = "./one_peak.bed"
-	#find_window(peaks_bed_file)
-
-	#bw_file = "./control_footprints.bw"
-
-	#window_length = 200
-	#step = 100
 
 	args = parse_args()
 
