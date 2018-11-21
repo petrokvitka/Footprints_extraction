@@ -5,24 +5,16 @@ call_peaks uses the uncontinuous score from a bigWig file to estimate peaks
 @contact: anastasiia.petrova(at)mpi-bn.mpg.de
 """
 
-import argparse
-import sys
-import os
-import re
-import time
-#import multiprocessing
-import logging
-#import subprocess
-#from Bio import SeqIO
-#import Bio.SeqIO.FastaIO as bio
-import numpy as np
-from collections import defaultdict
-#from scipy import stats
-import pyBigWig
-#from statsmodels.sandbox.stats.multicomp import multipletests #for bonfferoni
-#import matplotlib.pyplot as plt
-#import random
-import textwrap
+import argparse #for parsing the parameters
+import sys #for example to exit if a problem occured
+import os #for example to check the existing path of a file
+import re #for example to split a string
+import time #to calculate time needed to proceed the data
+import logging #to write informaiton about the programm run
+import numpy as np #to calculate mean for example
+from collections import defaultdict #to create nested dictionaries
+import pyBigWig #to work with bigWig files
+import textwrap #to print the help message nice
 
 logger = logging.getLogger('call_peaks')
 logger.setLevel(logging.INFO)
@@ -51,35 +43,19 @@ def parse_args():
 
 	return args
 
+#this function is currently unused, but may be used in the future version
 def check_directory(directory):
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 		#logger.info('a new directory ' + directory + ' was created')
 		print('a new directory ' + directory + ' was created')
 
-#if there are chars that are not allowed, they will be replaced with '_', to the possibly invalid names there will be added '_' at the beginning of the name
-def check_name(name_to_test):
-	badchars= re.compile(r'[^A-Za-z0-9_. ]+|^\.|\.$|^ | $|^$')
-	badnames= re.compile(r'(aux|com[1-9]|con|lpt[1-9]|prn)(\.|$)')
-
-	#replace all the chars that are not allowed with '_'
-	name = badchars.sub('_', name_to_test)
-
-	#check for the reserved by the os names
-	if badnames.match(name):
-		name = '_' + name
-	return name
-
+#check if the file to remove exists and if so, delete it
 def remove_file(file):
 	if os.path.isfile(file):
 		os.remove(file)
 
-def make_name_from_path(full_path, output_directory, ending):
-	return os.path.join(output_directory, get_name_from_path(full_path) + ending)
-	
-def get_name_from_path(full_path):
-	return os.path.splitext(os.path.basename(full_path))[0]
-
+#check if the input files exist. We have no possibility to check if the format of the files is right here though
 def check_existing_input_files(args):
 
 	#check if the bigWig file exists
@@ -92,37 +68,44 @@ def check_existing_input_files(args):
 		print('there is no such bed file ' + args.bed + ', the exit is forced')
 		sys.exit()
 
+#make a dictionary out of the .bed file for easy access to the information from the .bed file
 def make_bed_dictionary(bed_file):
 
 	logger.info('reading of the bed file')
 
-	bed_dictionary = {}
+	try: #if i can't proceede this file like so, the input was not a .bed file!
+		bed_dictionary = {}
 
-	with open(bed_file) as read_bed_file:
-		for bed_line in read_bed_file:
-			bed_line_array = re.split(r'\t', bed_line.rstrip('\n'))
-			if bed_line_array[1].isdigit() and bed_line_array[2].isdigit() and int(bed_line_array[1]) <= int(bed_line_array[2]): #in the real bedfile the second column is a start position, and the third column is an end position, so we are checking if these are integers and if the start position is smaller than the end one
-				key = bed_line_array[0] + ":" + bed_line_array[1] + "-" + bed_line_array[2]
-				value = []
-				for i in range(3, len(bed_line_array)):
-					value.append(bed_line_array[i]) 
+		with open(bed_file) as read_bed_file:
+			for bed_line in read_bed_file:
+				bed_line_array = re.split(r'\t', bed_line.rstrip('\n'))
+				if bed_line_array[1].isdigit() and bed_line_array[2].isdigit() and int(bed_line_array[1]) <= int(bed_line_array[2]): #in the real bedfile the second column is a start position, and the third column is an end position, so we are checking if these are integers and if the start position is smaller than the end one
+					key = bed_line_array[0] + ":" + bed_line_array[1] + "-" + bed_line_array[2]
+					value = []
+					for i in range(3, len(bed_line_array)):
+						value.append(bed_line_array[i]) 
 
-				bed_dictionary[key] = value
-			else: #this is not a bed file, force exit
-				logger.info('please make sure the input bed file has a right format, the problem occured on the line ' + bed_line)
-				sys.exit()
+					bed_dictionary[key] = value
+				else: #this is not a bed file, force exit
+					logger.info('please make sure the input bed file has a right format, the problem occured on the line ' + bed_line)
+					sys.exit()
 
-	read_bed_file.close()
+		read_bed_file.close()
 
-	return bed_dictionary
+		return bed_dictionary
 
+	except UnicodeDecodeError: #force exit, if input is not a .bed file
+		logger.info('please make sure that the .bed file has a right format! The exit is forced')
+		sys.exit()
+
+#to save a footprint, find the score and max_pos for this footprint and chech for overlapping with other footprints within the current peak
 def save_footprint(footprint_count, footprint_scores, peak_footprints, chromosom, footprint_start, footprint_end, bonus_info_from_bed):
 
 	save_current_footprint = False
 
 	if len(footprint_scores) > 2: #exclude small regions to not work with them
 
-		#-------------- max score position
+		#calculate the position with the max score. if there are many positions with the same score, save one from the middle
 
 		first_max_pos = footprint_scores.index(max(footprint_scores))
 		last_max_pos = first_max_pos #assume that there is only one pos with max score
@@ -139,14 +122,11 @@ def save_footprint(footprint_count, footprint_scores, peak_footprints, chromosom
 			max_pos = int((last_max_pos - first_max_pos) / 2)
 		else:
 			max_pos = first_max_pos
-		#-------------------------------------
 
+		#calculate the score for the current footprint as mean of all scores from the bigwig file
 		footprint_score = np.mean(footprint_scores)
 
-		search_key = str(chromosom) + ":" + str(footprint_start) + "-" + str(footprint_end)
-
-		#--------------- checking for existing and overlapping footprints
-		
+		#checking for existing and overlapping footprints		
 		if len(peak_footprints.keys()) == 0: # hey, this is the first footprint!
 			save_current_footprint = True
 
@@ -187,12 +167,10 @@ def save_footprint(footprint_count, footprint_scores, peak_footprints, chromosom
 					break
 
 				else: #so this is a new footprint that has no overlaps with the others
-
 					save_current_footprint = True
 
 		if save_current_footprint == True:
-			#make sure to save this footprint
-			
+			#make sure to save this footprint			
 			footprint_name = "footprint_" + str(footprint_count)
 
 			peak_footprints[footprint_name] = peak_footprints.get(footprint_name, {})
@@ -204,6 +182,7 @@ def save_footprint(footprint_count, footprint_scores, peak_footprints, chromosom
 
 	return footprint_count, peak_footprints
 
+#apply slide window searching to estimate regions that are higher than the background and can possibly be footprints
 def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary_entry, step, percentage):
 
 	peak_len = len(scores_in_peak)
@@ -229,21 +208,20 @@ def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, pe
 
 			pos = pos + step
 
-	#look in each window and save the footprints
+	#look in each window and try to save the footprints
 	for j in range(len(parts)):
-
 		window = parts[j]
 
-		#-------------- add some percent to the background to avoid the noice we don't want to have
+		#add some percent to the background to avoid the noice we don't want to have
 		bw_peak_background = np.mean(window) #find the mean of all scores within one peak
 		part = (percentage*bw_peak_background)/100 #x procent of the background
 		bw_peak_background = bw_peak_background + part
-		#----------------------------------------------------------
 		
 		check_position = parts_positions[j] #the start position not within the window, but within the peak!!!
 		footprint_start = check_position #for each footprint
 		footprint_scores = [] #for each footprint
 
+		#look on each position inside the window
 		for i in range(len(window)):
 			position = i + 1 #calculate the relative position for a score
 			score = window[i] #extract one score from the list
@@ -267,39 +245,46 @@ def search_in_window(peak_footprints, footprint_count, chromosom, peak_start, pe
 
 	return peak_footprints, footprint_count
 
+#use the information provided from the .bed file to look for footprints within the peaks of interest
 def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, percentage):
 
 	logger.info('looking for footprints within peaks')
 
-	footprint_count = 1
-	all_footprints = {}
+	try:
+		footprint_count = 1
+		all_footprints = {}
 
-	bw_open = pyBigWig.open(bw_file)
+		bw_open = pyBigWig.open(bw_file)
 
-	for header in bed_dictionary:
+		for header in bed_dictionary:
 
-		peak_footprints = {}
+			peak_footprints = {}
 
-		header_splitted = re.split(r':', header)
-		chromosom = header_splitted[0]
-		positions = re.split(r'-', header_splitted[-1])
-		peak_start = int(positions[0])
-		peak_end = int(positions[1])
+			header_splitted = re.split(r':', header)
+			chromosom = header_splitted[0]
+			positions = re.split(r'-', header_splitted[-1])
+			peak_start = int(positions[0])
+			peak_end = int(positions[1])
 
-		scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, peak_start, peak_end)))) #save the scores to an array
+			scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, peak_start, peak_end)))) #save the scores to an array
 
-		peak_len = len(scores_in_peak)
+			peak_len = len(scores_in_peak)
 
-		peak_footprints, footprint_count = search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step, percentage)
+			peak_footprints, footprint_count = search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step, percentage)
 
-		for footprint_name in peak_footprints.keys():
-			all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
-			all_footprints[footprint_name] = peak_footprints[footprint_name]
+			for footprint_name in peak_footprints.keys():
+				all_footprints[footprint_name] = all_footprints.get(footprint_name, {})
+				all_footprints[footprint_name] = peak_footprints[footprint_name]
 
-	all_footprints = sorted(all_footprints.items(), key = lambda x : (x[1]['chromosom'], x[1]['start']), reverse = False) 
+		all_footprints = sorted(all_footprints.items(), key = lambda x : (x[1]['chromosom'], x[1]['start']), reverse = False) 
 
-	return all_footprints
+		return all_footprints
 
+	except RuntimeError: #if i can't work with the bigwig file like so, it was not a bigwig file!
+		logger.info('please make sure that the .bigWig file has a right format! The exit is forced')
+		sys.exit()
+
+#write the found footprints to the .bed file
 def write_to_bed_file(all_footprints, sorted_output_file_name):
 	output_file_name = "not_sorted_" + sorted_output_file_name #save in the working directory
 
@@ -311,6 +296,7 @@ def write_to_bed_file(all_footprints, sorted_output_file_name):
 
 	output_file.write('\t'.join(header) + '\n') #write the header
 
+	#write each footprint line for line to the output file
 	for footprint in all_footprints:
 		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(round(footprint[1]['score'], 6)), str(footprint[1]['len']), str(footprint[1]['max_pos']), '\t'.join(footprint[1]['bonus'])]) + '\n')
 
@@ -350,8 +336,8 @@ def main():
 	if args.silent:
 		logger.removeHandler(ch)
 
-	logger.info("call_peaks.py was called using these parameters:")
-	logger.info(vars(args))
+	logger.info("call_peaks.py was called using these parameters: " + str(vars(args)))
+	#logger.info(vars(args))
 
 	bed_dictionary = make_bed_dictionary(args.bed)
 	all_footprints = find_peaks_from_bw(bed_dictionary, args.bigwig, args.window_length, args.step, args.percentage)
