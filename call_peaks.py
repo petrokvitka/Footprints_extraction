@@ -267,9 +267,7 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, percentage)
 			peak_end = int(positions[1])
 
 			scores_in_peak = np.nan_to_num(np.array(list(bw_open.values(chromosom, peak_start, peak_end)))) #save the scores to an array
-
-			peak_len = len(scores_in_peak)
-
+			
 			peak_footprints, footprint_count = search_in_window(peak_footprints, footprint_count, chromosom, peak_start, peak_end, scores_in_peak, window_length, bed_dictionary[header], step, percentage)
 
 			for footprint_name in peak_footprints.keys():
