@@ -80,17 +80,6 @@ def make_name_from_path(full_path, output_directory, ending):
 def get_name_from_path(full_path):
 	return os.path.splitext(os.path.basename(full_path))[0]
 
-def is_fasta(check_fasta):
-	if not os.path.isfile(check_fasta):
-		#logger.info('there is no file with genome, the exit is forced')
-		print('there is no file with genome, the exit is forced')
-		sys.exit()
-	else:
-		# modified code from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
-	    with open(check_fasta, "r") as handle:
-	        fasta = SeqIO.parse(handle, "fasta")
-	        return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
-
 def check_existing_input_files(args):
 
 	if not is_fasta(args.genome):
@@ -414,7 +403,10 @@ def main():
 	all_footprints = find_peaks_from_bw(bed_dictionary, bw_file, window_length, step)
 	write_to_bed_file(all_footprints)
 
-	#logger.info("call_peaks needed %s seconds to generate the output" % (time.time() - start))
+	logger.info("the number of peaks: " + str(len(bed_dictionary)))
+	logger.info("the number of footprints: " + str(len(all_footprints)))
+
+	logger.info("call_peaks needed %s minutes to generate the output" % ((time.time() - start)/60))
 	
 	for handler in logger.handlers:
 		handler.close()
