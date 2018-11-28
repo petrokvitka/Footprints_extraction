@@ -37,7 +37,7 @@ def parse_args():
 	parser.add_argument('--output_file', default='call_peaks_output.bed', type=str, help='enter a name for the output file, by default ./call_peaks_output.bed')
 	parser.add_argument('--window_length', default=200, type=int, help='enter the length for a window, by defauld 200 bp')
 	parser.add_argument('--step', default=100, type=int, help='enter a step to move the window, by default 100 bp')
-	parser.add_argument('--percentage',  default=10, type=int, help='enter a percentage to be added to background while searching for footprints, by default 10%')
+	parser.add_argument('--percentage',  default=0, type=int, help='enter a percentage to be added to background while searching for footprints, by default 0%')
 	parser.add_argument('--silent', action='store_true', help='while working with data write the information only into ./call_peaks_log.txt')
 	args = parser.parse_args()
 
