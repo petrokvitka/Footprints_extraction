@@ -1,6 +1,6 @@
 
 """
-call_peaks uses the uncontinuous score from a bigWig file to estimate peaks
+call_peaks uses the uncontinuous score from a bigWig file to estimate footpints within peaks of interest.
 @author: Anastasiia Petrova
 @contact: anastasiia.petrova(at)mpi-bn.mpg.de
 """
