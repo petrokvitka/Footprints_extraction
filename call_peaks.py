@@ -25,7 +25,7 @@ def parse_args():
 	
 	parser = argparse.ArgumentParser(prog = '', description = textwrap.dedent('''                           
 
-		This script produces a file with peaks in .bed format from the file with scores in .bigWig format.
+		This script produces a file with footprints in .bed format from the file with scores in .bigWig format and a corresponding .bed file with peaks of interest.
 		'''), epilog='That is what you need to make this script work for you. Enjoy it')
 	
 	required_arguments = parser.add_argument_group('required arguments')
@@ -98,7 +98,7 @@ def make_bed_dictionary(bed_file):
 		logger.info('please make sure that the .bed file has a right format! The exit is forced')
 		sys.exit()
 
-#to save a footprint, find the score and max_pos for this footprint and chech for overlapping with other footprints within the current peak
+#to save a footprint, find the score and max_pos for this footprint and check for overlapping with other footprints within the current peak
 def save_footprint(footprint_count, footprint_scores, peak_footprints, chromosom, footprint_start, footprint_end, bonus_info_from_bed):
 
 	save_current_footprint = False
@@ -335,8 +335,7 @@ def main():
 		logger.removeHandler(ch)
 
 	logger.info("call_peaks.py was called using these parameters: " + str(vars(args)))
-	#logger.info(vars(args))
-
+	
 	bed_dictionary = make_bed_dictionary(args.bed)
 	all_footprints = find_peaks_from_bw(bed_dictionary, args.bigwig, args.window_length, args.step, args.percentage)
 	write_to_bed_file(all_footprints, args.output_file)
