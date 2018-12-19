@@ -286,7 +286,7 @@ def find_peaks_from_bw(bed_dictionary, bw_file, window_length, step, percentage)
 def write_to_bed_file(all_footprints, sorted_output_file_name):
 	output_file_name = "not_sorted_" + sorted_output_file_name #save in the working directory
 
-	header = ["#chr", "start", "end", "name", "score", "len", "max_pos", "bonus_info"] #a header to know what is in the columns
+	header = ["#chr", "start", "end", "name", "score", "strand", "len", "max_pos", "bonus_info"] #a header to know what is in the columns
 
 	output_file = open(output_file_name, 'w') #open a file to write
 
@@ -296,7 +296,7 @@ def write_to_bed_file(all_footprints, sorted_output_file_name):
 
 	#write each footprint line for line to the output file
 	for footprint in all_footprints:
-		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(round(footprint[1]['score'], 6)), str(footprint[1]['len']), str(footprint[1]['max_pos']), '\t'.join(footprint[1]['bonus'])]) + '\n')
+		output_file.write('\t'.join([footprint[1]['chromosom'], str(footprint[1]['start']), str(footprint[1]['end']), footprint[0], str(round(footprint[1]['score'], 6)), '.', str(footprint[1]['len']), str(footprint[1]['max_pos']), ';'.join(footprint[1]['bonus'])]) + '\n')
 
 	output_file.close()
 
