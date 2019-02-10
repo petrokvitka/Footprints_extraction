@@ -1,0 +1,10 @@
+name: call_peaks
+
+channels:
+  - bioconda
+  - conda-forge
+
+dependencies:
+  - python >=3
+  - numpy
+  - pybigWig
