@@ -1,5 +1,6 @@
-# call_peaks
-The script uses the uncontinuous score from a bigWig file to estimate footprints within the peaks of interest. A sliding window algorithm is used to look through the peaks. A region with significant high signal will be saved as a footprint. To estimate the significance of a footprint the signal is compared with the mean of the signals within the window. After the run the footprints are saved in a .bed file.
+# Footprints extraction
+
+There is a number of tools to find peaks from different file formats. Still there was no suitable tool to extract the peaks from a file with uncontinuous signal. Therefore the _footprints_extraction.py_ was developed. The signal in the input file in .bigWig format is used to estimate peaks or in other words footprints. A sliding window algorithm is used to look through the signal from the input file. A region with significant high signal will be saved as a footprint. To estimate the significance of a footprint the signal is compared with the mean of the signals within the window. After the run the footprints are saved in a .bed file.
 
 ## Required input
 There are two required input files for the peak calling. They are:
@@ -37,3 +38,5 @@ There are also optional parameters that could be set to refine the search:
 Changing the optional parameters can lead to varying the number of found footprints and their length. The smaller the _--percentage_ is set, the longer the found footrpints will be, but the quality of each footprint will be lower. The length of a window has also an impact on the length of found footprints. The bigger the _--window_len_ parameter ist set, the longer the found footprints will be, though this change is not as remarkable as while changing the _--percentage_ parameter.
 
 There is a possibility for a user to set the max allowed number of base pairs in between two footprints with the help of a parameter _--min_gap_. By default 6 bp are allowed. That means, all footprints, that have a smaller number of footprints in between, will be merged. The score for a merged footprint is calculated as a mean of scores of both original footprints. If the user doesn't want to merge the footprints, the _--min_gap_ should be set to 1.
+
+## Example data
