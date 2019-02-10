@@ -69,3 +69,8 @@ python footprints_extraction.py --bigwig example/buenrostro50k_chr1_fp.bw --bed 
 ```
 
 The output file containing the footprints, as well as the logfile can be found in the [example_output](./example_output) folder.
+
+
+## TODO
+
+There is still some work to do to improve the readability and quality of the code, and clean the code in overall a little bit.
