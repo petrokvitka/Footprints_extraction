@@ -2,6 +2,27 @@
 
 There is a number of tools to find peaks from different file formats. Still there was no suitable tool to extract the peaks from a file with uncontinuous signal. Therefore the _footprints_extraction.py_ was developed. The signal in the input file in .bigWig format is used to estimate peaks or in other words footprints. A sliding window algorithm is used to look through the signal from the input file. A region with significant high signal will be saved as a footprint. To estimate the significance of a footprint the signal is compared with the mean of the signals within the window. After the run the footprints are saved in a .bed file.
 
+# Installation
+
+Please mention that [CONDA](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) is needed for the installation of the Footprints extraction working environment.
+
+1. Clone the directory
+```bash
+git clone https://github.com/petrokvitka/Footprints_extraction
+```
+2. Switch to the directory
+```bash
+cd Footprints_extraction
+```
+3. Create the needed environment from the file fp_extract.yaml
+```bash
+conda env create --file fp_extract.yaml
+```
+4. Activate the environment
+```bash
+source activate fp_extract
+```
+
 ## Required input
 There are two required input files for the peak calling. They are:
 * --bigwig a bigWig file with the signal;
@@ -40,3 +61,11 @@ Changing the optional parameters can lead to varying the number of found footpri
 There is a possibility for a user to set the max allowed number of base pairs in between two footprints with the help of a parameter _--min_gap_. By default 6 bp are allowed. That means, all footprints, that have a smaller number of footprints in between, will be merged. The score for a merged footprint is calculated as a mean of scores of both original footprints. If the user doesn't want to merge the footprints, the _--min_gap_ should be set to 1.
 
 ## Example data
+
+The files in [example](./example) are based on the Buenrostro's [research](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4374986/). The file in .bigWig format represents the uncontinuous signal from the ATAC-seq and the file in .BED format contains the corresponding peaks. The run with example data can be started using following command:
+
+```bash
+python footprints_extraction.py --bigwig example/buenrostro50k_chr1_fp.bw --bed example/buenrostro50k_chr1_peaks.bed --output_file example_output/output.bed
+```
+
+The output file containing the footprints, as well as the logfile can be found in the [example_output](./example_output) folder.
