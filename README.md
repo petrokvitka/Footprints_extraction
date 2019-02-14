@@ -2,7 +2,7 @@
 
 There is a number of tools to find peaks from different file formats. Still there was no suitable tool to extract the peaks from a file with uncontinuous signal. Therefore the _footprints_extraction.py_ was developed. The signal in the input file in .bigWig format is used to estimate peaks or in other words footprints. A sliding window algorithm is used to look through the signal from the input file. A region with significant high signal will be saved as a footprint. To estimate the significance of a footprint the signal is compared with the mean of the signals within the window. After the run the footprints are saved in a .bed file.
 
-# Installation
+## Installation
 
 Please mention that [CONDA](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) is needed for the installation of the Footprints extraction working environment.
 
